@@ -8,7 +8,17 @@ from algorithm.rsmp import RSMP
 from data_maker.data import NAASNetwork
 
 
-def run_single_exp(fwd_count, fwd_cap_range, tenant_count, ins_count_range, ins_cost_range):
+def run_single_exp(fwd_count: int, fwd_cap_range: [int, int], tenant_count: int, ins_count_range: [int, int],
+                   ins_cost_range: [int, int]):
+    """
+    运行单组实验。
+    :param fwd_count: forwarder数量
+    :param fwd_cap_range: forwarder容量的范围，list类型，上届下届
+    :param tenant_count: 租户数量
+    :param ins_count_range: 租户拥有的实例数量区间
+    :param ins_cost_range: 租户拥有的实例的资源消耗区间
+    :return: dict类型，其中MSE代表方差；LBF代表负载均衡因子，MIC代表最大可能受影响租户数，NC为未完成调度的实例数量，调试用。
+    """
     NAASNetwork.genarate_network(fwd_count, fwd_cap_range)
     NAASNetwork.genarate_tenants(tenant_count, ins_count_range, ins_cost_range)
 
