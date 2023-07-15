@@ -8,7 +8,9 @@ class RSMP(BaseAlgorithm):
 
     def build_feasible_assignment(self, tenant):
         self.network.forwarder_set.sort()
-        sharding = self.network.forwarder_set[:tenant.ins_count]
+        sharding = random.sample(self.network.forwarder_set, tenant.ins_count)
+        sharding.sort()
+        tenant.ins_list.sort()
         for i in range(tenant.ins_count):
             fwd = sharding[i]
             ins = tenant.ins_list[i]

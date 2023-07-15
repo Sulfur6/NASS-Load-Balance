@@ -9,8 +9,8 @@ class ShuffleSharding(BaseAlgorithm):
     def shuffle_sharding(self):
         for tenant in self.tenants:
             sharding = random.sample(self.network.forwarder_set, tenant.ins_count)
-            sharding.sort()
-            tenant.ins_list.sort()
+            # sharding.sort()
+            # tenant.ins_list.sort()
             for i in range(tenant.ins_count):
                 fwd = sharding[i]
                 ins = tenant.ins_list[i]
