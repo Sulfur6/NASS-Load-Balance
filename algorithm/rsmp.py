@@ -1,5 +1,6 @@
 import random
 from algorithm.base_algorithm import *
+from queue import PriorityQueue
 
 
 class RSMP(BaseAlgorithm):
@@ -8,14 +9,17 @@ class RSMP(BaseAlgorithm):
 
     def build_feasible_assignment(self, tenant):
         self.network.forwarder_set.sort()
-        sharding = random.sample(self.network.forwarder_set, tenant.ins_count)
+        sharding = self.network.forwarder_set[:tenant.max_sharding_size]
         sharding.sort()
-        tenant.ins_list.sort()
-        for i in range(tenant.ins_count):
-            fwd = sharding[i]
-            ins = tenant.ins_list[i]
-            fwd.cap_remain -= ins.cost
-            ins.forwarder = fwd
+        sharding_heap = PriorityQueue()
+        for fwd in sharding:
+            sharding_heap.put_nowait(fwd)
+
+        for ins in tenant.ins_list:
+            best_fwd = sharding_heap.get_nowait()
+            best_fwd.cap_remain -= ins.cost
+            ins.forwarder = best_fwd
+            sharding_heap.put_nowait(best_fwd)
 
     def main_procedure(self):
         for tenant in self.tenants:

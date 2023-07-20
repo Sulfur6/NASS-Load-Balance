@@ -19,6 +19,7 @@ class Tenant:
     """
     tmp
     """
-    def __init__(self, ins_list: List[Instance]):
+    def __init__(self, ins_list: List[Instance], sharding_size: int):
         self.ins_count = len(ins_list)
         self.ins_list = ins_list
+        self.max_sharding_size = sharding_size

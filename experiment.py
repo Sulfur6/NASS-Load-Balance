@@ -8,8 +8,8 @@ from algorithm.rsmp import RSMP
 from data_maker.data import NAASNetwork
 
 
-def run_single_exp(fwd_count: int, fwd_cap_range: [int, int], tenant_count: int, ins_count_range: [int, int],
-                   ins_cost_range: [int, int]):
+def run_single_exp(fwd_count: int, fwd_cap: int, tenant_count: int, ins_cost_range: [int, int],
+                   avg_ipc: int):
     """
     运行单组实验。
     :param fwd_count: forwarder数量
@@ -19,8 +19,8 @@ def run_single_exp(fwd_count: int, fwd_cap_range: [int, int], tenant_count: int,
     :param ins_cost_range: 租户拥有的实例的资源消耗区间
     :return: dict类型，其中MSE代表方差；LBF代表负载均衡因子，MIC代表最大可能受影响租户数，NC为未完成调度的实例数量，调试用。
     """
-    NAASNetwork.genarate_network(fwd_count, fwd_cap_range)
-    NAASNetwork.genarate_tenants(tenant_count, ins_count_range, ins_cost_range)
+    NAASNetwork.genarate_network(fwd_count, fwd_cap)
+    NAASNetwork.genarate_tenants(tenant_count, ins_cost_range, avg_ipc)
 
     nova = Nova(copy.deepcopy(NAASNetwork.network), copy.deepcopy(NAASNetwork.tenants))
     shuffle_sharding = ShuffleSharding(copy.deepcopy(NAASNetwork.network), copy.deepcopy(NAASNetwork.tenants))
@@ -42,3 +42,119 @@ def run_single_exp(fwd_count: int, fwd_cap_range: [int, int], tenant_count: int,
                sm_naas.unassigned_count()],
     }
     return res
+
+
+def run_set_exp(fwd_count: int, fwd_cap: int, tc_range: [int, int], tc_step: int, ins_cost_range: [int, int],
+                avg_ipc: int):
+    res = {
+        "MSE": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "LBF": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "MIC": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "NC": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        }
+    }
+
+    for tenant_count in range(tc_range[0], tc_range[1], tc_step):
+        single_res = run_single_exp(fwd_count, fwd_cap, tenant_count, ins_cost_range, avg_ipc)
+        for key in res.keys():
+            res[key]["NOVA"].append(single_res[key][0])
+            res[key]["SS"].append(single_res[key][1])
+            res[key]["RSMP"].append(single_res[key][2])
+            res[key]["NAAS"].append(single_res[key][3])
+    return res
+
+
+def run_set_exp_avgipc(fwd_count: int, fwd_cap: int, tenant_count, ins_cost_range: [int, int],
+                       airange, ai_step):
+    res = {
+        "MSE": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "LBF": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "MIC": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        },
+        "NC": {
+            "NOVA": [],
+            "SS": [],
+            "RSMP": [],
+            "NAAS": []
+        }
+    }
+    for avg_ipc in range(airange[0], airange[1], ai_step):
+        single_res = run_single_exp(fwd_count, fwd_cap, tenant_count, ins_cost_range, avg_ipc)
+        for key in res.keys():
+            res[key]["NOVA"].append(single_res[key][0])
+            res[key]["SS"].append(single_res[key][1])
+            res[key]["RSMP"].append(single_res[key][2])
+            res[key]["NAAS"].append(single_res[key][3])
+    return res
+
+
+def repeat_MIC_exp(fwd_count: int, fwd_cap: int, tenant_count, ins_cost_range: [int, int], avg_ipc: int):
+    pre_sum_mic = {
+        "NOVA": [],
+        "SS": [],
+        "RSMP": [],
+        "NAAS": []
+    }
+    cur_stat = {
+        "NOVA": 0,
+        "SS": 0,
+        "RSMP": 0,
+        "NAAS": 0
+    }
+    final_count = {
+        "NOVA": {},
+        "SS": {},
+        "RSMP": {},
+        "NAAS": {}
+    }
+    name_mapping = {
+        "NOVA": 0,
+        "SS": 1,
+        "RSMP": 2,
+        "NAAS": 3
+    }
+    for i in range(1000):
+        single_res = run_single_exp(fwd_count, fwd_cap, tenant_count, ins_cost_range, avg_ipc)
+        for key in name_mapping.keys():
+            count = single_res["MIC"][name_mapping[key]]
+            cur_stat[key] += count
+            if count not in final_count[key]:
+                final_count[key][count] = 0
+            final_count[key][count] += 1
+        if (i + 1) % 100 == 0:
+            for key in name_mapping.keys():
+                pre_sum_mic[key].append(cur_stat[key])
+    return pre_sum_mic, final_count
